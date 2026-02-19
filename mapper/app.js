@@ -66,46 +66,35 @@ function renderNode(node) {
     if (!node) return "";
 
     if (node.type === "outcome") {
-        const refCode = node.ref_code || "";
-        const displayName = node.display_name || "Unknown Outcome";
-        const description = node.description || "";
-
-        // Define status based on backend mapping flag
         const statusClass = node.is_mapped ? "mapped" : "orphan";
-
-        const category = getOutcomeCategory(refCode);
+        const category = getOutcomeCategory(node.ref_code);
         const typeClass = `text-${category.toLowerCase()}`;
-
-        // Drag & Drop logic (AQF items cannot be dragged)
-        const isAQF = category === "AQF";
-        const draggableAttr = isAQF
-            ? ""
-            : 'draggable="true" ondragstart="startDrag(event)"';
-
-        // Escape single quotes for the onclick handler
-        const safeName = displayName.replace(/'/g, "\\'");
+        const safeName = (node.display_name || "").replace(/'/g, "\\'");
 
         return `
-            <div class="outcome ${statusClass}" 
-                 ${draggableAttr}
-                 data-code="${refCode}"
-                 onclick="stageOutcome(${node.id}, '${safeName}', '${refCode}')"
-                 ondragover="event.preventDefault()"
-                 ondrop="handleDrop(event, ${node.id}, '${refCode}')">
-                
-                <div style="display: flex; align-items: baseline; width: 100%;">
+        <div class="outcome ${statusClass}" 
+             data-code="${node.ref_code}"
+             draggable="${category !== "AQF"}" 
+             ondragstart="startDrag(event)"
+             onclick="stageOutcome(${node.id}, '${safeName}', '${node.ref_code}')"
+             ondragover="event.preventDefault()"
+             ondrop="handleDrop(event, ${node.id}, '${node.ref_code}')">
+            
+            <div class="outcome-content-wrapper">
+                <div class="outcome-header">
                     <span class="type-indicator ${typeClass}">${category}</span>
-                    <span class="item-display-name ${typeClass}">${displayName}</span>
+                    <span class="item-display-name ${typeClass}">${node.display_name}</span>
                 </div>
 
-                ${description ? `<div class="item-description">${description}</div>` : ""}
-                
-                ${
-                    node.parent_ids && node.parent_ids.length > 0
-                        ? `<div class="mapping-tag">🔗 Mapped to: ${node.parent_ids.join(", ")}</div>`
-                        : ""
-                }
-            </div>`;
+                ${node.description ? `<div class="item-description">${node.description}</div>` : ""}
+            </div>
+            
+            ${
+                node.parent_ids && node.parent_ids.length > 0
+                    ? `<div class="mapping-tag">🔗 Mapped to: ${node.parent_ids.join(", ")}</div>`
+                    : ""
+            }
+        </div>`;
     }
 
     // Folder Rendering (Expanded by default)
