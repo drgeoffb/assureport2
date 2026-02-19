@@ -176,6 +176,10 @@ body {
     color: #007bff;
 }
 
+.outcome * {
+    pointer-events: none;
+}
+
 .outcome {
     display: flex;
     flex-direction: column; /* Stack name and description */
@@ -186,6 +190,7 @@ body {
     cursor: pointer;
     border: 1px solid #ddd;
     border-radius: 4px;
+    pointer-events: auto;
 }
 
 .outcome.orphan {
@@ -244,6 +249,20 @@ body {
     padding: 20px;
     text-align: center;
 }
+
+.staged-card[draggable="true"] {
+    cursor: grab;
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+}
+
+.staged-card[draggable="true"]:active {
+    cursor: grabbing;
+    transform: scale(0.98);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
 #log {
     overflow-y: auto;
     height: 250px;
@@ -304,6 +323,13 @@ body {
     display: flex;
     align-items: baseline;
     gap: 8px;
+}
+
+.outcome.drag-over {
+    background-color: #e7f3ff !important;
+    border: 2px dashed #007bff !important;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+    transform: scale(1.01);
 }
 
 .item-display-name {
