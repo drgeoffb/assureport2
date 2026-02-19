@@ -225,25 +225,31 @@ class CanvasClient:
         except Exception:
             return []        
         
-    def _format_outcome_node(self, o):
-        if not o or not isinstance(o, dict) or 'id' not in o:
-            return None
-        
-        o_id = o.get("id")
-        # Clean up title - some Canvas outcomes use 'display_name'
-        title = o.get("title") or o.get("display_name") or f"ID: {o_id}"
-        
-        guid = o.get("vendor_guid") or ""
-        # Filter out empty strings and self-links
-        p_ids = [pid for pid in guid.replace("MAPPED_TO:", "").split(",") if pid and pid != str(o_id)]
-        
-        return {
-            "id": o_id, 
-            "name": title, 
-            "type": "outcome",
-            "is_mapped": len(p_ids) > 0, 
-            "parent_ids": p_ids
-        }
+def _format_outcome_node(self, o):
+    if not o or not isinstance(o, dict) or 'id' not in o:
+        return None
+    
+    o_id = o.get("id")
+    # Reference Code (Title) and Human Label (Display Name)
+    ref_code = o.get("title") or "" 
+    display_name = o.get("display_name") or ref_code or f"ID: {o_id}"
+    
+    # Description Handling: Only take the part before the <hr> mapping data
+    full_desc = o.get("description") or ""
+    clean_desc = full_desc.split("<hr>")[0] if "<hr>" in full_desc else full_desc
+    
+    guid = o.get("vendor_guid") or ""
+    p_ids = [pid for pid in guid.replace("MAPPED_TO:", "").split(",") if pid and pid != str(o_id)]
+    
+    return {
+        "id": o_id, 
+        "ref_code": ref_code,      # e.g., "AQF7_01_K"
+        "display_name": display_name, # e.g., "AQF7 01 K Body of Knowledge"
+        "description": clean_desc,    # Text before <hr>
+        "type": "outcome",
+        "is_mapped": len(p_ids) > 0, 
+        "parent_ids": p_ids
+    }
     
     def _deduplicate_children(self, children):
         seen_ids = set()
