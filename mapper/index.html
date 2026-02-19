@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Curriculum Mapping Tool</title>
+</head>
+<body>
+    <div id="tree-container">
+    <div id="filter-bar">
+    <button class="filter-chip chip-red" onclick="applyStatusFilter('orphan')">Gaps</button>
+    <button class="filter-chip chip-green" onclick="applyStatusFilter('mapped')">Mapped</button>
+    <button class="filter-chip chip-level" id="btn-L7" onclick="toggleLevel('7')">L7</button>
+    <button class="filter-chip chip-level" id="btn-L8" onclick="toggleLevel('8')">L8</button>
+    <button class="filter-chip chip-level" id="btn-L9" onclick="toggleLevel('9')">L9</button>
+    <button class="filter-chip chip-orange" id="btn-prune" onclick="togglePrune()">
+    Hide <span id="prune-count" style="font-weight:normal; font-size:0.8em; margin-left:5px;"></span>
+    </button>
+    <button class="filter-chip chip-gray" onclick="toggleAllGlobal(true)">Collapse All</button>
+    <button class="filter-chip chip-gray" onclick="toggleAllGlobal(false)">Expand All</button>
+    <button class="filter-chip chip-outline" onclick="resetAllFilters()">Reset</button>
+    <input type="text" id="tree-search" placeholder="Search..." onkeyup="runAllFilters()">
+    </div>
+    <div id="relationship-filters" style="margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+    <span style="font-size: 0.8em; color: #666; margin-right: 10px;">RELATIONSHIPS:</span>
+    <button class="filter-chip chip-rel active" id="rel-AQF-CLO" onclick="toggleRel('AQF', 'CLO')">AQF ↔ CLO</button>
+    <button class="filter-chip chip-rel" id="rel-CLO-SLO" onclick="toggleRel('CLO', 'SLO')">CLO ↔ SLO</button>
+    <button class="filter-chip chip-rel" id="rel-SLO-ALO" onclick="toggleRel('SLO', 'ALO')">SLO ↔ ALO</button>
+    </div>
+    <div id="tree-root">
+    <div id="loading-state" style="padding: 20px; color: #666; display: flex; align-items: center;">
+    <div class="spinner"></div>
+    <div>
+    <span id="timer-display" style="font-weight: bold; color: #007bff; margin-right: 10px;">0s</span>
+    <span id="loading-text">Initializing connection...</span>
+    </div>
+    </div>
+    </div>
+    </div>
+    <div id="staging-dock">
+    <div class="dock-header">Target Selection</div>
+    <div id="staged-content">
+    <p style="color: #888;">Select an outcome to stage...</p>
+    </div>
+    <div id="log">&gt; System Ready...</div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

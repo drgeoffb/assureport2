@@ -1,0 +1,158 @@
+body { 
+            font-family: 'Segoe UI', sans-serif; 
+            display: flex; 
+            background: #f8f9fa; 
+            margin: 0; 
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Left Column: Tree Area */
+        #tree-container { 
+            flex: 1; 
+            padding: 20px 30px; 
+            height: 100vh; 
+            overflow-y: auto; 
+            border-right: 1px solid #dee2e6;
+        }
+
+        /* Sticky Filter Bar */
+        #filter-bar {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            z-index: 100;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+
+        /* Filter Chips (Rectangles) */
+        .filter-chip {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        .filter-chip:hover { opacity: 0.8; transform: translateY(-1px); }
+        .chip-red { background-color: #dc3545; }
+        .chip-green { background-color: #28a745; }
+        .chip-level { background-color: #17a2b8; opacity: 0.4; } /* Dim when inactive */
+        .chip-level.active { opacity: 1; box-shadow: 0 0 0 2px #000; }
+        .chip-gray { background-color: #6c757d; }
+        .chip-outline { background-color: transparent; border: 1px solid #6c757d; color: #6c757d; }
+
+        .chip-orange { background-color: #fd7e14; opacity: 0.5; }
+        .chip-orange.active { opacity: 1; border: 2px solid #000; }
+
+        .chip-rel { background-color: #f8f9fa; border: 1px solid #ccc; color: #333; }
+        .chip-rel.active { background-color: #212529; color: #fff; border-color: #212529; }
+
+        .type-badge { padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.7em; }
+        .aqf { background: #6f42c1; } /* Purple */
+        .clo { background: #007bff; } /* Blue */
+        .slo { background: #20c997; } /* Teal */
+        .alo { background: #ffc107; color: #000; } /* Yellow */
+
+        /* Color coding for outcome types */
+        .text-aqf { color: #6f42c1 !important; font-weight: bold; } /* Purple */
+        .text-clo { color: #007bff !important; font-weight: bold; } /* Blue */
+        .text-slo { color: #20c997 !important; font-weight: bold; } /* Teal */
+        .text-alo { color: #fd7e14 !important; font-weight: bold; } /* Orange */
+
+        /* Small badge style for the prefix */
+        .type-indicator {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background: #eee;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .pruned { display: none !important; }
+
+        #tree-search {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            flex-grow: 1;
+            min-width: 150px;
+        }
+
+        /* Tree Structure */
+        .node { margin-left: 20px; border-left: 1px solid #dee2e6; }
+        .folder {
+            display: flex;
+            align-items: center;
+            background: #e9ecef;
+            margin: 4px 0;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        .folder.collapsed { background-color: #dae0e5; border-left: 4px solid #007bff; }
+        
+        .outcome {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #ddd;
+            margin: 2px 0;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .outcome.mapped { border-left: 5px solid #28a745; }
+        .outcome.orphan { border-left: 5px solid #dc3545; }
+        .outcome:hover { background: #f0f7ff; border-color: #007bff; }
+
+        .status-icon { width: 25px; flex-shrink: 0; }
+        .item-name { flex-grow: 1; }
+        .tag { font-size: 0.75em; color: #888; margin-left: 10px; }
+
+        /* Right Column: Dock & Console */
+        #staging-dock {
+            width: 340px;
+            height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.05);
+        }
+        .dock-header { background: #007bff; color: white; padding: 15px; font-weight: bold; }
+        #staged-content { flex: 1; padding: 20px; text-align: center; }
+        #log { 
+            height: 250px; background: #222; color: #0f0; 
+            font-family: monospace; font-size: 0.75em; padding: 10px; 
+            overflow-y: auto; border-top: 2px solid #444; 
+        }
+
+        .hidden { display: none !important; }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }     
+        }
