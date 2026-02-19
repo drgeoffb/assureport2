@@ -22,13 +22,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # --- Schemas ---
 class MappingRequest(BaseModel):
     subject_outcome_id: int
     parent_outcome_id: int
     parent_title: str
 
+
 # --- Endpoints ---
+
 
 @app.get("/outcomes/{account_id}/summary")
 async def get_summary(account_id: int):
@@ -40,6 +43,7 @@ async def get_summary(account_id: int):
         print(f"Summary Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/outcomes/{account_id}/search")
 async def search_outcomes(account_id: int, query: str):
     """Recursively searches for outcomes by title."""
@@ -50,35 +54,48 @@ async def search_outcomes(account_id: int, query: str):
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/outcomes/map")
 async def map_outcome(req: MappingRequest):
-    """Creates/appends a mapping link."""
-    try:
-        # Note: Ensure map_outcome_multi is defined in canvas_client.py
-        return canvas.map_outcome_multi(req.subject_outcome_id, req.parent_outcome_id, req.parent_title)
-    except Exception as e:
-        print(f"Map Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Ensure you are using the same logic to update Canvas
+    outcome = canvas.get_outcome_details(req.subject_outcome_id)
+
+    # Save the Parent's CODE (title) into the GUID
+    new_guid = f"MAPPED_TO:{req.parent_title}"
+
+    base_desc = outcome.get("description", "").split("<hr>")[0]
+    new_desc = f"{base_desc}<hr><b>Alignment:</b> Mapped to {req.parent_title}"
+
+    canvas.update_outcome(req.subject_outcome_id, new_guid, new_desc)
+    return {"status": "success"}
+
 
 @app.post("/outcomes/unmap")
 async def unmap_outcome(req: MappingRequest):
     """Surgically removes a mapping link."""
     try:
-        return canvas.unmap_outcome_surgical(req.subject_outcome_id, req.parent_outcome_id, req.parent_title)
+        return canvas.unmap_outcome_surgical(
+            req.subject_outcome_id, req.parent_outcome_id, req.parent_title
+        )
     except Exception as e:
         print(f"Unmap Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @app.get("/outcomes/{account_id}/tree")
 async def get_tree(account_id: int):
     tree_data = canvas.get_hierarchy_tree(account_id)
     if not tree_data:
         # If the tree failed, return a 404 instead of letting FastAPI crash with a 500
-        raise HTTPException(status_code=404, detail="Hierarchy not found or access denied")
+        raise HTTPException(
+            status_code=404, detail="Hierarchy not found or access denied"
+        )
     return {"status": "success", "tree": tree_data}
+
 
 import threading
 import queue
+
 
 @app.get("/outcomes/{account_id}/stream")
 async def stream_tree(account_id: int):
@@ -106,7 +123,7 @@ async def stream_tree(account_id: int):
         # While the thread is running (or queue has messages), yield them
         while True:
             try:
-                msg = msg_queue.get(timeout=30) # Wait for a message
+                msg = msg_queue.get(timeout=30)  # Wait for a message
                 if isinstance(msg, tuple):
                     status, data = msg
                     if status == "COMPLETE":
@@ -124,6 +141,8 @@ async def stream_tree(account_id: int):
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
