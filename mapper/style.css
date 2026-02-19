@@ -152,14 +152,30 @@ body {
 }
 
 .children {
-    display: flex;
-    flex-direction: column;
-    margin-left: 28px; /* Physical indentation */
+    display: block !important;
+    margin-left: 28px;
     padding-left: 10px;
-    border-left: 1px solid #e9ecef; /* Visual guide line */
+    border-left: 1px solid #e9ecef;
 }
 
-/* Ensure folders are visible by default */
+.outcome {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin-bottom: 10px;
+    padding: 12px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    cursor: grab;
+}
+
+.outcome.root-standard {
+    cursor: default;
+    background: #f8f9fa;
+    border-left: 4px solid #adb5bd;
+}
+
 .children.collapsed {
     display: none !important;
 }
@@ -178,19 +194,6 @@ body {
 
 .outcome * {
     pointer-events: none;
-}
-
-.outcome {
-    display: flex;
-    flex-direction: column; /* Stack name and description */
-    align-items: flex-start;
-    margin: 2px 0;
-    padding: 12px;
-    background: white;
-    cursor: pointer;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    pointer-events: auto;
 }
 
 .outcome.orphan {
@@ -251,16 +254,14 @@ body {
 }
 
 .staged-card[draggable="true"] {
+    transition:;
     cursor: grab;
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
 }
 
 .staged-card[draggable="true"]:active {
-    cursor: grabbing;
-    transform: scale(0.98);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: scale(0.98);
+    cursor: grabbing;
 }
 
 #log {
@@ -304,15 +305,6 @@ body {
     color: #007bff;
 }
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
 .outcome-content-wrapper {
     display: flex;
     flex-direction: column;
@@ -325,11 +317,21 @@ body {
     gap: 8px;
 }
 
+.outcome-header,
+.item-description,
+.type-indicator {
+    pointer-events: none;
+}
+
 .outcome.drag-over {
+    transform: scale(1.01);
     background-color: #e7f3ff !important;
     border: 2px dashed #007bff !important;
-    box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
-    transform: scale(1.01);
+}
+
+.outcome.root-standard:hover {
+    box-shadow: none;
+    transform: none;
 }
 
 .item-display-name {
@@ -352,4 +354,13 @@ body {
     font-size: 0.85em;
     font-weight: 800;
     text-transform: uppercase;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }

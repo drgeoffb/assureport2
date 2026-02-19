@@ -66,69 +66,48 @@ async function init() {
 function renderNode(node) {
     if (!node) return "";
 
-    if (node.type === "outcome") {
-        const refCode = node.ref_code || "";
-        const displayName = node.display_name || "Unknown Outcome";
-        const description = node.description || "";
-
-        // Define status based on backend mapping flag
+    // Render as Outcome if it has an outcome reference code OR explicit type
+    if (node.type === "outcome" || node.ref_code) {
+        const isRoot = node.is_root_level || false;
         const statusClass = node.is_mapped ? "mapped" : "orphan";
-
-        const category = getOutcomeCategory(refCode);
+        const category = getOutcomeCategory(node.ref_code || "");
         const typeClass = `text-${category.toLowerCase()}`;
 
-        // Drag & Drop logic (AQF items cannot be dragged, they are targets only)
-        const isAQF = category === "AQF";
-        const draggableAttr = isAQF
-            ? ""
-            : 'draggable="true" ondragstart="startDrag(event)"';
-
-        // Escape single quotes for the onclick handler
-        const safeName = displayName.replace(/'/g, "\\'");
+        // Escape quotes to prevent HTML breaking
+        const safeName = (node.display_name || "").replace(/'/g, "\\'");
 
         return `
-            <div class="outcome ${statusClass}" 
-                ${draggableAttr}
-                data-code="${refCode}"
-                onclick="stageOutcome(${node.id}, '${safeName}', '${refCode}')"
-                ondragenter="event.preventDefault(); this.classList.add('drag-over')" 
-                ondragover="event.preventDefault();" 
-                ondragleave="this.classList.remove('drag-over')"
-                ondrop="this.classList.remove('drag-over'); handleDrop(event, ${node.id}, '${refCode}')">
+            <div class="outcome ${statusClass} ${isRoot ? "root-standard" : ""}" 
+                 ${isRoot ? "" : 'draggable="true" ondragstart="startDrag(event)"'}
+                 data-code="${node.ref_code}"
+                 data-is-root="${isRoot}"
+                 onclick="stageOutcome(${node.id}, '${safeName}', '${node.ref_code}', ${isRoot})"
+                 ondragenter="event.preventDefault(); !${isRoot} && this.classList.add('drag-over')" 
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondragover="event.preventDefault()" 
+                 ondrop="this.classList.remove('drag-over'); handleDrop(event, ${node.id}, '${node.ref_code}')">
                 
                 <div class="outcome-content-wrapper">
-                    <div class="outcome-header" style="display: flex; align-items: baseline; gap: 8px;">
+                    <div class="outcome-header">
                         <span class="type-indicator ${typeClass}">${category}</span>
-                        <span class="item-display-name ${typeClass}" style="font-weight: 700; font-size: 1.1em;">${displayName}</span>
+                        <span class="item-display-name ${typeClass}">${node.display_name}</span>
                     </div>
-
-                    ${
-                        description
-                            ? `
-                        <div class="item-description" style="font-size: 1.05rem; color: #333; line-height: 1.5; font-style: italic; margin-top: 0; padding-top: 2px;">
-                            ${description}
-                        </div>`
-                            : ""
-                    }
+                    ${node.description ? `<div class="item-description">${node.description}</div>` : ""}
                 </div>
-                
-                ${
-                    node.parent_ids && node.parent_ids.length > 0
-                        ? `<div class="mapping-tag">🔗 Mapped to: ${node.parent_ids.join(", ")}</div>`
-                        : ""
-                }
+                ${node.parent_ids && node.parent_ids.length > 0 ? `<div class="mapping-tag">🔗 Mapped to: ${node.parent_ids.join(", ")}</div>` : ""}
             </div>`;
     }
 
-    // Folder Rendering (Expanded by default)
+    // Otherwise, render as Folder
+    const hasChildren = node.children && node.children.length > 0;
     return `
         <div class="folder-container">
             <div class="folder" onclick="toggleFolder(this)">
                 <span class="folder-toggle-icon">▼</span>
-                ${node.name}
+                ${node.name || "Folder"}
             </div>
             <div class="children" style="display: block;">
-                ${node.children ? node.children.map((child) => renderNode(child)).join("") : ""}
+                ${hasChildren ? node.children.map((child) => renderNode(child)).join("") : '<div style="padding: 5px 20px; color: #999; font-size: 0.8em;">(Empty)</div>'}
             </div>
         </div>`;
 }
@@ -257,6 +236,95 @@ function canMap(sourceCat, targetCat) {
     return targetIdx - sourceIdx === 1;
 }
 
+function toggleRel(p, c) {
+    activeRel = `${p}-${c}`;
+    // Update UI state
+    document
+        .querySelectorAll(".chip-rel")
+        .forEach((btn) => btn.classList.remove("active"));
+    document.getElementById(`rel-${activeRel}`).classList.add("active");
+    runAllFilters();
+}
+
+function startDrag(event) {
+    const outcomeEl = event.target.closest(".outcome");
+    if (outcomeEl.getAttribute("data-is-root") === "true") {
+        event.preventDefault();
+        return;
+    }
+
+    const id = outcomeEl.getAttribute("onclick").match(/\d+/)[0];
+    const name = outcomeEl.querySelector(".item-display-name").innerText;
+    const refCode = outcomeEl.getAttribute("data-code");
+
+    stagedOutcomeData = {
+        id: parseInt(id),
+        name,
+        refCode,
+        category: getOutcomeCategory(refCode),
+    };
+    event.dataTransfer.setData("text/plain", id);
+}
+
+function stageOutcome(id, name, refCode, isRoot) {
+    if (isRoot) {
+        document.getElementById("log").innerHTML +=
+            `<br><span style="color:orange">⚠️ Root standards (AQF) cannot be mapped.</span>`;
+        return;
+    }
+
+    const sourceEl = document.querySelector(`.outcome[data-code="${refCode}"]`);
+    const description = sourceEl
+        ? sourceEl.querySelector(".item-description")?.innerHTML
+        : "";
+    const category = getOutcomeCategory(refCode);
+    const targetNeeded = HIERARCHY_ORDER[HIERARCHY_ORDER.indexOf(category) + 1];
+
+    stagedOutcomeData = { id, name, refCode, category };
+
+    document.getElementById("staged-content").innerHTML = `
+        <div class="staged-card" draggable="true" ondragstart="startDrag(event)">
+            <span class="type-badge ${category.toLowerCase()}">${category}</span>
+            <div style="margin: 10px 0; font-size: 1.2em;"><strong>${name}</strong></div>
+            <div style="font-family: monospace; font-size: 0.9em; color: #666; margin-bottom: 10px;">Code: ${refCode}</div>
+            ${description ? `<div class="item-description" style="font-size: 1.1rem; margin-bottom: 15px;">${description}</div>` : ""}
+            
+            <div id="drop-zone-prompt" style="padding: 12px; background: #e7f3ff; border: 1px dashed #007bff; border-radius: 4px; text-align: center;">
+                <p style="margin: 0; color: #007bff; font-weight: bold;">👉 DRAG THIS onto a ${targetNeeded || "Parent"}</p>
+            </div>
+            
+            <div id="confirm-zone" style="display:none; margin-top:15px; padding: 15px; background: #f0fff4; border: 1px solid #28a745; border-radius: 4px;">
+                <p style="color: #28a745; margin: 0 0 10px 0;"><strong>Target:</strong> <span id="target-name-display"></span></p>
+                <button onclick="confirmMapping()" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">
+                    Confirm & Save
+                </button>
+            </div>
+        </div>`;
+}
+
+function handleDrop(event, targetId, targetCode) {
+    event.preventDefault();
+    if (!stagedOutcomeData) return;
+
+    const targetCategory = getOutcomeCategory(targetCode);
+    if (!canMap(stagedOutcomeData.category, targetCategory)) {
+        alert(
+            `Invalid: ${stagedOutcomeData.category} cannot be mapped to ${targetCategory}`,
+        );
+        return;
+    }
+
+    mappingPayload = {
+        childId: stagedOutcomeData.id,
+        parentId: targetId,
+        parentCode: targetCode,
+    };
+
+    document.getElementById("drop-zone-prompt").style.opacity = "0.3";
+    document.getElementById("confirm-zone").style.display = "block";
+    document.getElementById("target-name-display").innerText = targetCode;
+}
+
 async function executeMapping(childId, parentId, parentCode) {
     try {
         const response = await fetch(`${API_BASE}/outcomes/map`, {
@@ -270,156 +338,34 @@ async function executeMapping(childId, parentId, parentCode) {
         });
 
         if (response.ok) {
-            // 1. Log the success
             document.getElementById("log").innerHTML +=
-                `<br><span style="color:green">✅ Saved to Canvas: ${parentCode}</span>`;
+                `<br><span style="color:green">✅ Saved: ${parentCode}</span>`;
 
-            // 2. FIND THE OUTCOME IN THE TREE
-            // We search for the outcome by the ID we just mapped
-            const treeItems = document.querySelectorAll(`.outcome`);
-            let targetEl = null;
-            treeItems.forEach((el) => {
-                if (el.getAttribute("onclick").includes(childId.toString())) {
-                    targetEl = el;
-                }
-            });
-
+            // IMMEDIATE UI UPDATE
+            const targetEl = document.querySelector(
+                `.outcome[onclick*="${childId}"]`,
+            );
             if (targetEl) {
-                // Remove 'orphan' class and add 'mapped' class (turns it Green)
                 targetEl.classList.remove("orphan");
                 targetEl.classList.add("mapped");
-
-                // Add or update the mapping tag badge
-                let tag = targetEl.querySelector(".mapping-tag");
-                if (!tag) {
-                    tag = document.createElement("div");
-                    tag.className = "mapping-tag";
-                    targetEl.appendChild(tag);
-                }
+                let tag =
+                    targetEl.querySelector(".mapping-tag") ||
+                    document.createElement("div");
+                tag.className = "mapping-tag";
                 tag.innerHTML = `🔗 Mapped to: ${parentCode}`;
+                if (!targetEl.querySelector(".mapping-tag"))
+                    targetEl.appendChild(tag);
             }
 
-            // 3. Update the button in the dock
-            const confirmBtn = document.querySelector("#confirm-zone button");
-            if (confirmBtn) {
-                confirmBtn.innerText = "SAVED ✅";
-                confirmBtn.style.background = "#6c757d";
-                confirmBtn.disabled = true;
+            const btn = document.querySelector("#confirm-zone button");
+            if (btn) {
+                btn.innerText = "SAVED ✅";
+                btn.disabled = true;
+                btn.style.background = "#6c757d";
             }
-        } else {
-            const err = await response.json();
-            alert("Save failed: " + (err.detail || "Unknown error"));
         }
     } catch (err) {
-        console.error("Mapping failed", err);
-    }
-}
-
-function toggleRel(p, c) {
-    activeRel = `${p}-${c}`;
-    // Update UI state
-    document
-        .querySelectorAll(".chip-rel")
-        .forEach((btn) => btn.classList.remove("active"));
-    document.getElementById(`rel-${activeRel}`).classList.add("active");
-    runAllFilters();
-}
-
-function startDrag(event) {
-    // If we're dragging from the dock, stagedOutcomeData is already set.
-    // If from the tree, we set it now.
-    if (!stagedOutcomeData || event.target.closest(".outcome")) {
-        const outcomeEl = event.target.closest(".outcome");
-        const refCode = outcomeEl.getAttribute("data-code");
-        const name = outcomeEl.querySelector(".item-display-name").innerText;
-        // Extract ID from the onclick attribute string
-        const idMatch = outcomeEl.getAttribute("onclick").match(/\d+/);
-        const id = idMatch ? parseInt(idMatch[0]) : null;
-
-        stagedOutcomeData = {
-            id: id,
-            name: name,
-            refCode: refCode,
-            category: getOutcomeCategory(refCode),
-        };
-    }
-
-    event.dataTransfer.setData("text/plain", stagedOutcomeData.id);
-    // Visual feedback
-    event.target.style.opacity = "0.5";
-}
-
-function stageOutcome(id, name, refCode) {
-    // 1. Find the description from the source element in the tree
-    const sourceEl = document.querySelector(`.outcome[data-code="${refCode}"]`);
-    const description = sourceEl
-        ? sourceEl.querySelector(".item-description")?.innerHTML
-        : "";
-
-    const category = getOutcomeCategory(refCode);
-    const targetNeeded = HIERARCHY_ORDER[HIERARCHY_ORDER.indexOf(category) + 1];
-
-    stagedOutcomeData = { id, name, refCode, category };
-
-    document.getElementById("staged-content").innerHTML = `
-        <div class="staged-card" 
-             draggable="true" 
-             ondragstart="startDrag(event)"
-             style="text-align: left; padding: 15px; border: 2px solid #007bff; border-radius: 8px; cursor: grab; background: white;">
-            
-            <span class="type-badge ${category.toLowerCase()}">${category}</span>
-            <div style="margin: 10px 0; font-size: 1.2em;"><strong>${name}</strong></div>
-            <div style="font-family: monospace; font-size: 0.9em; color: #666; margin-bottom: 10px;">Code: ${refCode}</div>
-            
-            ${description ? `<div class="item-description" style="font-size: 1.1rem; margin-bottom: 15px;">${description}</div>` : ""}
-            
-            <div id="drop-zone-prompt" style="padding: 12px; background: #e7f3ff; border-radius: 4px; border: 1px dashed #007bff; text-align: center;">
-                <p style="margin: 0; color: #007bff; font-weight: bold; font-size: 1rem;">
-                    👉 NOW DRAG THIS CARD onto a ${targetNeeded || "Top Level"} folder in the tree
-                </p>
-            </div>
-            
-            <div id="confirm-zone" style="display:none; margin-top:15px; padding: 15px; background: #f0fff4; border: 1px solid #28a745; border-radius: 4px;">
-                <p style="font-size: 1rem; color: #28a745; margin-top:0;"><strong>Target Selected:</strong> <span id="target-name-display" style="font-weight:bold;"></span></p>
-                <button onclick="confirmMapping()" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">
-                    Confirm & Save to Canvas
-                </button>
-            </div>
-        </div>`;
-}
-
-function handleDrop(event, targetId, targetCode) {
-    event.preventDefault();
-    if (!stagedOutcomeData) return;
-
-    // Hierarchy validation
-    const targetCategory = getOutcomeCategory(targetCode);
-    if (!canMap(stagedOutcomeData.category, targetCategory)) {
-        alert(
-            `Invalid Mapping: ${stagedOutcomeData.category} cannot be mapped to ${targetCategory}`,
-        );
-        return;
-    }
-
-    mappingPayload = {
-        childId: stagedOutcomeData.id,
-        parentId: targetId,
-        parentCode: targetCode,
-    };
-
-    // Update Dock UI
-    const prompt = document.getElementById("drop-zone-prompt");
-    const confirmZone = document.getElementById("confirm-zone");
-
-    if (prompt) {
-        prompt.style.opacity = "0.3"; // Dim the "Drag this" instructions
-        prompt.style.pointerEvents = "none";
-    }
-
-    if (confirmZone) {
-        confirmZone.style.display = "block";
-        confirmZone.style.backgroundColor = "#fff"; // Brighten the confirm area
-        document.getElementById("target-name-display").innerText = targetCode;
+        console.error(err);
     }
 }
 
